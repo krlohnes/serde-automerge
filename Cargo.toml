@@ -1,0 +1,13 @@
+[package]
+name = "data-model-test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+automerge = { path = "c:/users/jasper/traverse/automerge-rs/automerge" }
+anyhow = "1"
+serde_json = "1"
+colored_json = "2.1"
+serde = "1"
