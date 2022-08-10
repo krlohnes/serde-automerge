@@ -1,7 +1,9 @@
-
-use automerge::{transaction::Transactable, ObjId};
-use serde::{Deserialize, Deserializer, de::Visitor};
 use crate::{Error, JasperDoc};
+use automerge::{transaction::Transactable, ObjId};
+use serde::{de::Visitor, Deserialize, Deserializer};
+
+mod scalar;
+pub use scalar::*;
 
 impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, Tx> {
     type Error = Error;
@@ -63,52 +65,62 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
     }
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
-            Err(Error::UnsupportedType)
-        }
+        V: Visitor<'de>,
+    {
+        Err(Error::UnsupportedType)
+    }
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
-            Err(Error::UnsupportedType)
-        }
+        V: Visitor<'de>,
+    {
+        Err(Error::UnsupportedType)
+    }
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_unit_struct<V>(
@@ -117,7 +129,8 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_newtype_struct<V>(
@@ -126,17 +139,20 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_tuple_struct<V>(
@@ -146,12 +162,14 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_struct<V>(
@@ -161,7 +179,8 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_enum<V>(
@@ -171,17 +190,20 @@ impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, 
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>{
+        V: Visitor<'de>,
+    {
         Err(Error::UnsupportedType)
     }
 }
