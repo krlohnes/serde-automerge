@@ -2,8 +2,8 @@ use crate::{Error, JasperDoc};
 use automerge::{transaction::Transactable, ObjId};
 use serde::{ser, Serialize, Serializer};
 
-pub(crate) struct SerializeSeq;
-pub(crate) struct SerializeTable<'a, 'b, Tx: Transactable> {
+pub struct SerializeSeq;
+pub struct SerializeTable<'a, 'b, Tx: Transactable> {
     ser: &'b mut JasperDoc<'a, Tx>,
     parent: ObjId,
 }
