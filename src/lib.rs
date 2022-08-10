@@ -100,31 +100,6 @@ pub fn export_json(
 
 use serde::*;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Error {
-    UnsupportedType,
-    Custom(String),
-}
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::UnsupportedType => "unsupported Rust type".fmt(f),
-            Error::Custom(s) => write!(f, "{}", s),
-        }
-    }
-}
-impl std::error::Error for Error {}
-impl serde::ser::Error for Error {
-    fn custom<T: std::fmt::Display>(msg: T) -> Error {
-        Error::Custom(msg.to_string())
-    }
-}
-impl serde::de::Error for Error {
-    fn custom<T: std::fmt::Display>(msg: T) -> Error {
-        Error::Custom(msg.to_string())
-    }
-}
-
 #[derive(Debug)]
 pub struct JasperDoc<'a, Tx: Transactable> {
     pub doc: &'a mut Tx,
@@ -138,6 +113,9 @@ use ser::*;
 
 mod de;
 use de::*;
+
+mod error;
+use error::*;
 
 #[derive(Serialize)]
 pub struct Position {
