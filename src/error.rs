@@ -4,6 +4,16 @@ pub enum Error {
     UnsupportedType,
     #[error("{0}")]
     Custom(String),
+    #[error("expected boolean, found {0}")]
+    ExpectedBoolean(&'static str),
+    #[error("expected string, found {0}")]
+    ExpectedString(&'static str),
+    #[error("expected integer, found {0}")]
+    ExpectedInteger(&'static str),
+    #[error("expected float, found {0}")]
+    ExpectedFloat(&'static str),
+    #[error("expected null, found {0}")]
+    ExpectedNull(&'static str),
 }
 
 impl serde::ser::Error for Error {
