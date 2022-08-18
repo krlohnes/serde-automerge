@@ -3,6 +3,7 @@ use automerge::{transaction::Transactable, ObjId};
 use serde::{de::Visitor, Deserialize, Deserializer};
 
 mod scalar;
+mod value;
 pub use scalar::*;
 
 impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, Tx> {

@@ -14,6 +14,8 @@ pub enum Error {
     ExpectedFloat(&'static str),
     #[error("expected null, found {0}")]
     ExpectedNull(&'static str),
+    #[error("expected map, found {0}")]
+    ExpectedMap(&'static str),
 }
 
 impl serde::ser::Error for Error {
