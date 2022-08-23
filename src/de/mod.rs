@@ -21,12 +21,21 @@ impl<'a> Deserializer<'a> {
     pub fn new_found(doc: &'a Automerge, value: Value<'a>, id: ObjId) -> Self {
         Self::new(doc, Some((value, id)))
     }
+    pub fn new_root(doc: &'a Automerge) -> Self {
+        Self::new_found(doc, ObjType::Map.into(), ObjId::Root)
+    }
     pub fn new_get<O: AsRef<ObjId>, P: Into<Prop>>(
         doc: &'a Automerge,
         key: O,
         prop: P,
     ) -> Result<Self, AutomergeError> {
         Ok(Self::new(doc, doc.get(key, prop)?))
+    }
+}
+
+impl<'a> From<&'a Automerge> for Deserializer<'a> {
+    fn from(doc: &'a Automerge) -> Self {
+        Self::new_root(doc)
     }
 }
 

@@ -17,6 +17,15 @@ impl<'a> MapDeserializer<'a> {
             current: None,
         }
     }
+    pub fn new_root(doc: &'a Automerge) -> Self {
+        Self::new(doc, ObjId::Root)
+    }
+}
+
+impl<'a> From<&'a Automerge> for MapDeserializer<'a> {
+    fn from(doc: &'a Automerge) -> Self {
+        Self::new_root(doc)
+    }
 }
 
 impl<'de, 'a> de::MapAccess<'de> for MapDeserializer<'a> {
@@ -38,7 +47,10 @@ impl<'de, 'a> de::MapAccess<'de> for MapDeserializer<'a> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let (value, id) = self.current.take().unwrap();
+        let (value, id) = self
+            .current
+            .take()
+            .expect("next_value_seed called before next_key_seed");
         seed.deserialize(ValueDeserializer::new_found(self.doc, value, id))
     }
 }

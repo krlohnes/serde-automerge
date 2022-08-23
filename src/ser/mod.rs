@@ -1,265 +1,193 @@
-use crate::{error::Error, JasperDoc};
-use automerge::{transaction::Transactable, ObjId};
-use serde::{ser, Serialize, Serializer};
+use automerge::{transaction::Transactable, AutomergeError, ObjId, ObjType, Prop, ScalarValue};
+use serde::{
+    ser::{self},
+    serde_if_integer128,
+};
 
-pub struct SerializeSeq;
-pub struct SerializeTable<'a, 'b, Tx: Transactable> {
-    ser: &'b mut JasperDoc<'a, Tx>,
-    parent: ObjId,
+// TODO: Add inline definitions where possible
+
+mod error;
+mod key;
+mod map;
+mod seq;
+pub use error::*;
+pub use key::*;
+pub use map::MapSerializer;
+pub use map::*;
+pub use seq::*;
+
+struct Serializer<'a, Tx: Transactable> {
+    tx: &'a Tx,
+    obj: ObjId,
+    prop: Prop,
 }
 
-impl<'a, 'b, Tx: Transactable> ser::SerializeMap for SerializeTable<'a, 'b, Tx> {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_key<T: ?Sized>(&mut self, input: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        Err(Error::UnsupportedType)
+impl<'a, Tx: Transactable> Serializer<'a, Tx> {
+    pub fn new<P: Into<Prop>>(tx: &'a Tx, obj: ObjId, prop: P) -> Self {
+        Self::new(tx, obj, prop.into())
     }
-
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        Err(Error::UnsupportedType)
+    pub fn new_root<P: Into<Prop>>(tx: &'a Tx, prop: P) -> Self {
+        Self::new(tx, ObjId::Root, prop)
     }
-
-    fn end(self) -> Result<(), Error> {
-        Err(Error::UnsupportedType)
+    fn put<V: Into<ScalarValue>>(self, value: V) -> Result<(), AutomergeError> {
+        self.tx.put(self.obj, self.prop, value)
     }
-}
-
-impl<'a, 'b, Tx: Transactable> ser::SerializeStruct for SerializeTable<'a, 'b, Tx> {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        value.serialize(&mut JasperDoc {
-            stuff: std::marker::PhantomData,
-            doc: self.ser.doc,
-            key: Some(key),
-            parent: self.parent.clone(),
-        })?;
-        Ok(())
+    fn put_object(self, value: ObjType) -> Result<ObjId, AutomergeError> {
+        self.tx.put_object(self.obj, self.prop, value)
     }
-
-    fn end(self) -> Result<(), Error> {
-        Ok(())
+    fn put_variant(self, variant: &'static str) -> Result<Self, AutomergeError> {
+        let obj = self.put_object(ObjType::Map)?;
+        Ok(Self::new(self.tx, obj, variant))
     }
 }
 
-impl ser::SerializeSeq for SerializeSeq {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        Err(Error::UnsupportedType)
-    }
-
-    fn end(self) -> Result<(), Error> {
-        Err(Error::UnsupportedType)
-    }
+macro_rules! serialize_put {
+    ($method:ident, $type:ty$( as $as:ty)?) => {
+        fn $method(self, v: $type) -> Result<Self::Ok, Self::Error> {
+            Ok(self.put(v$(as $as)?)?)
+        }
+    };
 }
 
-impl ser::SerializeTuple for SerializeSeq {
+impl<'a, Tx: Transactable> ser::Serializer for Serializer<'a, Tx> {
     type Ok = ();
     type Error = Error;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
+    type SerializeSeq = SeqSerializer<'a, Tx>;
+    type SerializeTuple = SeqSerializer<'a, Tx>;
+    type SerializeTupleStruct = SeqSerializer<'a, Tx>;
+    type SerializeTupleVariant = SeqSerializer<'a, Tx>;
+    type SerializeMap = MapSerializer<'a, Tx>;
+    type SerializeStruct = MapSerializer<'a, Tx>;
+    type SerializeStructVariant = MapSerializer<'a, Tx>;
+
+    serialize_put!(serialize_bool, bool);
+
+    serialize_put!(serialize_i8, i8 as i64);
+    serialize_put!(serialize_i16, i16 as i64);
+    serialize_put!(serialize_i32, i32 as i64);
+    serialize_put!(serialize_i64, i64);
+
+    serialize_put!(serialize_u8, u8 as u64);
+    serialize_put!(serialize_u16, u16 as u64);
+    serialize_put!(serialize_u32, u32 as u64);
+    serialize_put!(serialize_u64, u64);
+
+    serde_if_integer128! {
+        serialize_put!(serialize_i128, i128 as i64);
+        serialize_put!(serialize_u128, u128 as u64);
     }
 
-    fn end(self) -> Result<(), Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
+    serialize_put!(serialize_f32, f32 as f64);
+    serialize_put!(serialize_f64, f64);
 
-impl ser::SerializeTupleVariant for SerializeSeq {
-    type Ok = ();
-    type Error = Error;
+    serialize_put!(serialize_char, char);
+    serialize_put!(serialize_str, &str);
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
-    }
-
-    fn end(self) -> Result<(), Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
-
-impl ser::SerializeTupleStruct for SerializeSeq {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: ser::Serialize,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
-    }
-
-    fn end(self) -> Result<(), Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
-
-impl<'a, 'b, Tx: Transactable> Serializer for &'b mut JasperDoc<'a, Tx> {
-    type Ok = ();
-    type Error = Error;
-    type SerializeSeq = SerializeSeq;
-    type SerializeTuple = SerializeSeq;
-    type SerializeTupleStruct = SerializeSeq;
-    type SerializeTupleVariant = SerializeSeq;
-    type SerializeMap = SerializeTable<'a, 'b, Tx>;
-    type SerializeStruct = SerializeTable<'a, 'b, Tx>;
-    type SerializeStructVariant = ser::Impossible<(), Error>;
-
-    fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.doc.put(
-            &self.parent,
-            self.key.expect("Must have `name` to store value to"),
-            v as f64,
-        );
-        Ok(())
-    }
-    fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
-    fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
-    }
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
+        Ok(self.put(v.to_owned())?)
     }
+
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.serialize_unit()
     }
+
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: serde::Serialize,
     {
-        Err(Error::UnsupportedType)
+        value.serialize(self)
     }
+
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
+        Ok(self.put(())?)
     }
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
+
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
+        self.serialize_unit()
     }
+
     fn serialize_unit_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
+        _name: &'static str,
+        _variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.serialize_str(variant)
     }
+
     fn serialize_newtype_struct<T: ?Sized>(
         self,
-        name: &'static str,
+        _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: serde::Serialize,
     {
-        Err(Error::UnsupportedType)
+        value.serialize(self)
     }
+
     fn serialize_newtype_variant<T: ?Sized>(
         self,
         name: &'static str,
-        variant_index: u32,
+        _variant_index: u32,
         variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: serde::Serialize,
     {
-        Err(Error::UnsupportedType)
+        self.put_variant(variant)?
+            .serialize_newtype_struct(name, value)
     }
-    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        Err(Error::UnsupportedType)
+
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+        let obj = self.put_object(ObjType::List)?;
+        Ok(SeqSerializer::new(self.tx, obj))
     }
+
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.serialize_seq(Some(len))
     }
+
     fn serialize_tuple_struct(
         self,
-        name: &'static str,
+        _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.serialize_tuple(len)
     }
+
     fn serialize_tuple_variant(
         self,
         name: &'static str,
-        variant_index: u32,
+        _variant_index: u32,
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.put_variant(variant)?.serialize_tuple_struct(name, len)
     }
+
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        Err(Error::UnsupportedType)
+        let obj = self.put_object(ObjType::Map)?;
+        Ok(MapSerializer::new(self.tx, obj))
     }
+
     fn serialize_struct(
         self,
-        name: &'static str,
+        _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        let parent = self.parent.clone();
-        Ok(SerializeTable { ser: self, parent })
+        self.serialize_map(Some(len))
     }
+
     fn serialize_struct_variant(
         self,
         name: &'static str,
-        variant_index: u32,
+        _variant_index: u32,
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(Error::UnsupportedType)
+        self.put_variant(variant)?.serialize_struct(name, len)
     }
 }
