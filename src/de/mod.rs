@@ -1,210 +1,68 @@
-use crate::{Error, JasperDoc};
-use automerge::{transaction::Transactable, ObjId};
-use serde::{de::Visitor, Deserialize, Deserializer};
+use automerge::{Automerge, AutomergeError, ObjId, ObjType, Prop, ScalarValue, Value};
+use serde::{de, forward_to_deserialize_any};
 
-mod scalar;
-mod value;
-pub use scalar::*;
+mod error;
+mod map;
+mod seq;
 
-impl<'a, 'b, 'de, Tx: Transactable> Deserializer<'de> for &'b mut JasperDoc<'a, Tx> {
+pub use error::Error;
+pub use map::MapDeserializer;
+pub use seq::SeqDeserializer;
+
+pub struct Deserializer<'a> {
+    pub doc: &'a Automerge,
+    pub value: Option<(Value<'a>, ObjId)>,
+}
+
+impl<'a> Deserializer<'a> {
+    pub fn new(doc: &'a Automerge, value: Option<(Value<'a>, ObjId)>) -> Self {
+        Self { doc, value }
+    }
+    pub fn new_found(doc: &'a Automerge, value: Value<'a>, id: ObjId) -> Self {
+        Self::new(doc, Some((value, id)))
+    }
+    pub fn new_get<O: AsRef<ObjId>, P: Into<Prop>>(
+        doc: &'a Automerge,
+        key: O,
+        prop: P,
+    ) -> Result<Self, AutomergeError> {
+        Ok(Self::new(doc, doc.get(key, prop)?))
+    }
+}
+
+impl<'de> de::Deserializer<'de> for Deserializer<'_> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: Visitor<'de>,
+        V: de::Visitor<'de>,
     {
-        Err(Error::UnsupportedType)
+        match self.value {
+            None => visitor.visit_none(),
+            Some((Value::Object(t), id)) => match t {
+                ObjType::List => visitor.visit_seq(SeqDeserializer::new(self.doc, id)),
+                ObjType::Text => visitor.visit_string(self.doc.text(id)?),
+                ObjType::Map | ObjType::Table => {
+                    visitor.visit_map(MapDeserializer::new(self.doc, id))
+                }
+            },
+            Some((Value::Scalar(s), _)) => match s.into_owned() {
+                ScalarValue::Bytes(v) => visitor.visit_byte_buf(v),
+                ScalarValue::Str(v) => visitor.visit_str(&v),
+                ScalarValue::Int(v) => visitor.visit_i64(v),
+                ScalarValue::Uint(v) => visitor.visit_u64(v),
+                ScalarValue::F64(v) => visitor.visit_f64(v),
+                ScalarValue::Counter(v) => visitor.visit_i64(v.into()),
+                ScalarValue::Timestamp(v) => visitor.visit_i64(v),
+                ScalarValue::Boolean(v) => visitor.visit_bool(v),
+                ScalarValue::Null => visitor.visit_unit(),
+            },
+        }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_unit_struct<V>(
-        self,
-        name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_newtype_struct<V>(
-        self,
-        name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_tuple_struct<V>(
-        self,
-        name: &'static str,
-        len: usize,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_struct<V>(
-        self,
-        name: &'static str,
-        fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_enum<V>(
-        self,
-        name: &'static str,
-        variants: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
-    }
-    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        Err(Error::UnsupportedType)
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
     }
 }

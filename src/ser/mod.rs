@@ -1,4 +1,4 @@
-use crate::{Error, JasperDoc};
+use crate::{error::Error, JasperDoc};
 use automerge::{transaction::Transactable, ObjId};
 use serde::{ser, Serialize, Serializer};
 
@@ -44,7 +44,7 @@ impl<'a, 'b, Tx: Transactable> ser::SerializeStruct for SerializeTable<'a, 'b, T
             doc: self.ser.doc,
             key: Some(key),
             parent: self.parent.clone(),
-        });
+        })?;
         Ok(())
     }
 

@@ -16,6 +16,8 @@ pub enum Error {
     ExpectedNull(&'static str),
     #[error("expected map, found {0}")]
     ExpectedMap(&'static str),
+    #[error("expected {0}, found empty string")]
+    EmptyString(&'static str),
 }
 
 impl serde::ser::Error for Error {
