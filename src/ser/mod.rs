@@ -16,34 +16,39 @@ pub use map::MapSerializer;
 pub use map::*;
 pub use seq::*;
 
-struct Serializer<'a, Tx: Transactable> {
-    tx: &'a Tx,
+pub struct Serializer<'a, Tx: Transactable> {
+    tx: &'a mut Tx,
     obj: ObjId,
     prop: Prop,
 }
 
 impl<'a, Tx: Transactable> Serializer<'a, Tx> {
-    pub fn new<P: Into<Prop>>(tx: &'a Tx, obj: ObjId, prop: P) -> Self {
-        Self::new(tx, obj, prop.into())
+    pub fn new<P: Into<Prop>>(tx: &'a mut Tx, obj: ObjId, prop: P) -> Self {
+        Self {
+            tx,
+            obj,
+            prop: prop.into(),
+        }
     }
-    pub fn new_root<P: Into<Prop>>(tx: &'a Tx, prop: P) -> Self {
+    pub fn new_root<P: Into<Prop>>(tx: &'a mut Tx, prop: P) -> Self {
         Self::new(tx, ObjId::Root, prop)
     }
     fn put<V: Into<ScalarValue>>(self, value: V) -> Result<(), AutomergeError> {
-        self.tx.put(self.obj, self.prop, value)
+        self.tx.put(&self.obj, self.prop, value)
     }
-    fn put_object(self, value: ObjType) -> Result<ObjId, AutomergeError> {
-        self.tx.put_object(self.obj, self.prop, value)
+    fn put_object(self, value: ObjType) -> Result<(&'a mut Tx, ObjId), AutomergeError> {
+        let obj = self.tx.put_object(&self.obj, self.prop, value)?;
+        Ok((self.tx, obj))
     }
     fn put_variant(self, variant: &'static str) -> Result<Self, AutomergeError> {
-        let obj = self.put_object(ObjType::Map)?;
-        Ok(Self::new(self.tx, obj, variant))
+        let (tx, obj) = self.put_object(ObjType::Map)?;
+        Ok(Self::new(tx, obj, variant))
     }
 }
 
 macro_rules! serialize_put {
     ($method:ident, $type:ty$( as $as:ty)?) => {
-        fn $method(self, v: $type) -> Result<Self::Ok, Self::Error> {
+        fn $method(self, v: $type) -> Result<(), Self::Error> {
             Ok(self.put(v$(as $as)?)?)
         }
     };
@@ -142,8 +147,8 @@ impl<'a, Tx: Transactable> ser::Serializer for Serializer<'a, Tx> {
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        let obj = self.put_object(ObjType::List)?;
-        Ok(SeqSerializer::new(self.tx, obj))
+        let (tx, obj) = self.put_object(ObjType::List)?;
+        Ok(SeqSerializer::new(tx, obj))
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
@@ -168,9 +173,9 @@ impl<'a, Tx: Transactable> ser::Serializer for Serializer<'a, Tx> {
         self.put_variant(variant)?.serialize_tuple_struct(name, len)
     }
 
-    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        let obj = self.put_object(ObjType::Map)?;
-        Ok(MapSerializer::new(self.tx, obj))
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+        let (tx, obj) = self.put_object(ObjType::Map)?;
+        Ok(MapSerializer::new(tx, obj))
     }
 
     fn serialize_struct(

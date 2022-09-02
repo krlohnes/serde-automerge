@@ -3,18 +3,21 @@ use automerge::{transaction::Transactable, ObjId};
 use serde::ser;
 
 pub struct MapSerializer<'a, Tx: Transactable> {
-    tx: &'a Tx,
+    tx: &'a mut Tx,
     obj: ObjId,
     next_key: Option<String>,
 }
 
 impl<'a, Tx: Transactable> MapSerializer<'a, Tx> {
-    pub fn new(tx: &'a Tx, obj: ObjId) -> Self {
+    pub fn new(tx: &'a mut Tx, obj: ObjId) -> Self {
         Self {
             tx,
             obj,
             next_key: None,
         }
+    }
+    pub fn new_root(tx: &'a mut Tx) -> Self {
+        Self::new(tx, ObjId::Root)
     }
 }
 
@@ -38,7 +41,7 @@ impl<'a, Tx: Transactable> ser::SerializeMap for MapSerializer<'a, Tx> {
             .next_key
             .take()
             .expect("serialize_value called before serialize_key");
-        value.serialize(Serializer::new(self.tx, self.obj, key))?;
+        value.serialize(Serializer::new(self.tx, self.obj.clone(), key))?;
         Ok(())
     }
 
