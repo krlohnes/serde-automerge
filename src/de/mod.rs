@@ -64,6 +64,10 @@ impl<'de> de::Deserializer<'de> for Deserializer<'_> {
                 ScalarValue::Counter(v) => visitor.visit_i64(v.into()),
                 ScalarValue::Timestamp(v) => visitor.visit_i64(v),
                 ScalarValue::Boolean(v) => visitor.visit_bool(v),
+                ScalarValue::Unknown {
+                    type_code: _,
+                    bytes: v,
+                } => visitor.visit_byte_buf(v),
                 ScalarValue::Null => visitor.visit_unit(),
             },
         }
