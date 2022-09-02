@@ -1,4 +1,4 @@
-use super::{Error, KeySerializer, Serializer};
+use super::{KeySerializer, Serializer};
 use automerge::{transaction::Transactable, ObjId};
 use serde::ser;
 
@@ -22,8 +22,8 @@ impl<'a, Tx: Transactable> MapSerializer<'a, Tx> {
 }
 
 impl<'a, Tx: Transactable> ser::SerializeMap for MapSerializer<'a, Tx> {
-    type Ok = ();
-    type Error = Error;
+    type Ok = <Serializer<'a, Tx> as ser::Serializer>::Ok;
+    type Error = <Serializer<'a, Tx> as ser::Serializer>::Error;
 
     fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
     where
@@ -46,7 +46,7 @@ impl<'a, Tx: Transactable> ser::SerializeMap for MapSerializer<'a, Tx> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(())
+        Ok((self.tx, self.obj))
     }
 }
 

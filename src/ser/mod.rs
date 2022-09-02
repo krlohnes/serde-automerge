@@ -33,8 +33,9 @@ impl<'a, Tx: Transactable> Serializer<'a, Tx> {
     pub fn new_root<P: Into<Prop>>(tx: &'a mut Tx, prop: P) -> Self {
         Self::new(tx, ObjId::Root, prop)
     }
-    fn put<V: Into<ScalarValue>>(self, value: V) -> Result<(), AutomergeError> {
-        self.tx.put(&self.obj, self.prop, value)
+    fn put<V: Into<ScalarValue>>(self, value: V) -> Result<(&'a mut Tx, ObjId), AutomergeError> {
+        self.tx.put(&self.obj, self.prop, value)?;
+        Ok((self.tx, self.obj))
     }
     fn put_object(self, value: ObjType) -> Result<(&'a mut Tx, ObjId), AutomergeError> {
         let obj = self.tx.put_object(&self.obj, self.prop, value)?;
@@ -48,14 +49,14 @@ impl<'a, Tx: Transactable> Serializer<'a, Tx> {
 
 macro_rules! serialize_put {
     ($method:ident, $type:ty$( as $as:ty)?) => {
-        fn $method(self, v: $type) -> Result<(), Self::Error> {
+        fn $method(self, v: $type) -> Result<Self::Ok, Self::Error> {
             Ok(self.put(v$(as $as)?)?)
         }
     };
 }
 
 impl<'a, Tx: Transactable> ser::Serializer for Serializer<'a, Tx> {
-    type Ok = ();
+    type Ok = (&'a mut Tx, ObjId);
     type Error = Error;
 
     type SerializeSeq = SeqSerializer<'a, Tx>;
