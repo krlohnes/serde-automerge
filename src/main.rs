@@ -1,48 +1,44 @@
-use anyhow::Result;
-use automerge::{AutoCommit, ROOT};
+use automerge::{Automerge, ObjId};
+use serde::{Deserialize, Serialize};
 
-use serde_automerge::*;
+use serde_automerge::{de::Deserializer, ser::Serializer};
 
-fn main() {
-    let mut doc = AutoCommit::new();
-    // let id = doc
-    //     .put_object(ROOT, "some object", automerge::ObjType::Map)
-    //     .unwrap();
-    // doc.put(id, "hoi", "jasper").unwrap();
+#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+struct Position {
+    x: f32,
+    y: f32,
+    z: f32,
+}
 
-    // let id = doc
-    //     .put_object(ROOT, "some object", automerge::ObjType::Map)
-    //     .unwrap();
-    // doc.put(id, "hoi", "jaspe23r").unwrap();
-
-    // let id = doc
-    //     .put_object(ROOT, "some object1", automerge::ObjType::Map)
-    //     .unwrap();
-    // doc.put(id, "hoi", "jaspe23r").unwrap();
-    // let data = doc.save();
-
-    // export_json(std::io::Cursor::new(data), std::io::stdout(), true);
-
-    let p = Position {
+fn main() -> anyhow::Result<()> {
+    // We start with a new position
+    let pos_send = Position {
         x: 1.0,
         y: 2.0,
         z: 3.0,
     };
+    println!("Send position:\n{:?}", pos_send);
 
-    let mut d = JasperDoc {
-        stuff: std::marker::PhantomData,
-        doc: &mut doc,
-        key: None,
-        parent: ROOT,
-    };
+    // Create a doc on the sending party and serialize the position into it
+    let mut doc_send = Automerge::new();
+    {
+        let mut transaction = doc_send.transaction();
+        pos_send.serialize(Serializer::new_root(&mut transaction, "pos"))?;
+        transaction.commit();
+    }
 
-    put_automerge_point(&mut d, "stuff", p);
+    // This is the content which is send
+    let all_binary_data = doc_send.save();
 
-    // let result = p.serialize(&mut d);
-    let data = d.doc.save();
+    // Create a doc on the receiving party and receive the stored state
+    let doc_receive_all = Automerge::load(&all_binary_data)?;
 
-    export_json(std::io::Cursor::new(data), std::io::stdout(), true);
+    let pos_receive =
+        Position::deserialize(Deserializer::new_get(&doc_receive_all, ObjId::Root, "pos")?)?;
+    println!("Received position:\n{:?}", pos_receive);
+
+    // TODO
+    // let mut doc_receive_partial = Automerge::new();
+
+    Ok(())
 }
-
-// store key in JasperDoc
-// serialize_f32 can use key to store the value
