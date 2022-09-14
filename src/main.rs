@@ -1,7 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_automerge::{
-    de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
+    de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge,
+    AutomergeSetExtension, ObjId,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -86,6 +87,13 @@ fn sending_client() -> Result<Vec<u8>> {
         )
         .map(|s| s.result)
         .map_err(|f| f.error)?;
+
+    // We update the players position
+    player_send.position.x -= 2.0;
+    player_send.position.y -= 2.0;
+    player_send.position.z -= 2.0;
+
+    doc_send.set_value(ObjId::Root, PLAYER, player_send);
 
     // This is the content which we send and receive
     Ok(doc_send.save())
