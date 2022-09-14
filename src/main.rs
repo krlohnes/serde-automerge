@@ -1,8 +1,8 @@
 use anyhow::Result;
-use automerge::{transaction::CommitOptions, Automerge, ObjId};
 use serde::{Deserialize, Serialize};
-
-use serde_automerge::{de::Deserializer, ser::Serializer};
+use serde_automerge::{
+    de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
+};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct Float3 {
