@@ -25,7 +25,7 @@ pub trait AutomergeSetExtension {
 }
 pub trait AutomergeGetExtension {
     fn get_value<'de, S: serde::Deserialize<'de>, P: Into<Prop>>(
-        &'de self,
+        &self,
         obj: ObjId,
         prop: P,
     ) -> Result<Option<S>, AutomergeSerdeError>;
@@ -75,7 +75,7 @@ impl AutomergeSetExtension for Automerge {
 
 impl AutomergeGetExtension for Automerge {
     fn get_value<'de, S: serde::Deserialize<'de>, P: Into<Prop>>(
-        &'de self,
+        &self,
         obj: ObjId,
         prop: P,
     ) -> Result<Option<S>, AutomergeSerdeError> {
