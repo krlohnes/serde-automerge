@@ -1,5 +1,5 @@
 use super::Serializer;
-use automerge::{transaction::Transactable, ObjId};
+use automerge::{transaction::Transactable, ObjId, ScalarValue};
 use serde::ser;
 
 pub struct SeqSerializer<'a, Tx: Transactable> {
@@ -22,6 +22,9 @@ impl<'a, Tx: Transactable> ser::SerializeSeq for SeqSerializer<'a, Tx> {
     where
         T: serde::Serialize,
     {
+        if self.id == self.tx.length(&self.obj) {
+            self.tx.insert(&self.obj, self.id, ScalarValue::Null)?;
+        }
         value.serialize(Serializer::new(self.tx, self.obj.clone(), self.id))?;
         self.id += 1;
         Ok(())
