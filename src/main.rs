@@ -1,8 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_automerge::{
-    de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge,
-    AutomergeSetExtension, ObjId,
+    de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -26,6 +25,7 @@ const POSITION: &'static str = "position";
 
 const PLAYER: &'static str = "player";
 const CAMERA: &'static str = "camera";
+const NUMBERS: &'static str = "numbers";
 
 fn main() -> anyhow::Result<()> {
     let data = sending_client()?;
@@ -52,6 +52,7 @@ fn sending_client() -> Result<Vec<u8>> {
         y: 21.0,
         z: 22.0,
     };
+    let numbers_send = [31, 32, 33];
     println!("Sending:");
     println!("{:?}", camera_send);
     println!("{:?}", player_send);
@@ -60,12 +61,16 @@ fn sending_client() -> Result<Vec<u8>> {
     // Create a doc on the sending party and serialize the data into it
     let mut doc_send = Automerge::new();
 
-    let player_id = {
+    let (id_player, _id_camera, id_numbers) = {
         let mut transaction = doc_send.transaction();
-        camera_send.serialize(Serializer::new_root(&mut transaction, CAMERA))?;
-        let (_, id) = player_send.serialize(Serializer::new_root(&mut transaction, PLAYER))?;
+        let (_, id_player) =
+            player_send.serialize(Serializer::new_root(&mut transaction, PLAYER))?;
+        let (_, id_camera) =
+            camera_send.serialize(Serializer::new_root(&mut transaction, CAMERA))?;
+        let (_, id_numbers) =
+            numbers_send.serialize(Serializer::new_root(&mut transaction, NUMBERS))?;
         transaction.commit();
-        id
+        (id_player, id_camera, id_numbers)
     };
 
     // We update the players position
@@ -81,7 +86,7 @@ fn sending_client() -> Result<Vec<u8>> {
             |tx| {
                 player_send
                     .position
-                    .serialize(Serializer::new(tx, player_id, POSITION))
+                    .serialize(Serializer::new(tx, id_player, POSITION))
                     .map(|v| v.1)
             },
         )
@@ -93,7 +98,9 @@ fn sending_client() -> Result<Vec<u8>> {
     player_send.position.y -= 2.0;
     player_send.position.z -= 2.0;
 
-    doc_send.set_value(ObjId::Root, PLAYER, player_send);
+    use serde_automerge::AutomergeSetExtension;
+    doc_send.set_value(ObjId::Root, PLAYER, player_send)?;
+    doc_send.set_value(id_numbers, 2, 34)?;
 
     // This is the content which we send and receive
     Ok(doc_send.save())
@@ -113,10 +120,16 @@ fn receiving_client(received_data: Vec<u8>) -> Result<()> {
         ObjId::Root,
         CAMERA,
     )?)?;
+    let numbers_receive = Vec::<i32>::deserialize(Deserializer::new_get(
+        &doc_receive_all,
+        ObjId::Root,
+        NUMBERS,
+    )?)?;
 
     println!("Received:");
     println!("{:?}", camera_receive);
     println!("{:?}", player_receive);
+    println!("{:?}", numbers_receive);
 
     // TODO: sending/receiving partial updates
 
