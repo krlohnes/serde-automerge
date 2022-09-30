@@ -52,25 +52,48 @@ fn main() -> anyhow::Result<()> {
 
     // Receiving
     let mut doc_receive = Automerge::load(&data)?;
-    let received = receive(&doc_receive)?;
-    correct(&player_send, &camera_send, &numbers_send, &received);
+    let (mut player_receive, mut camera_receive, mut numbers_receive) = receive(&doc_receive)?;
+    correct(
+        &player_send,
+        &camera_send,
+        &numbers_send,
+        &player_receive,
+        &camera_receive,
+        &numbers_receive,
+    );
 
     // Updating
-    update(
+    update1(
         &mut doc_send,
         &mut player_send,
         &mut camera_send,
         &mut numbers_send,
-        player_id,
-        camera_id,
-        numbers_id,
+        &player_id,
+        &camera_id,
+        &numbers_id,
     )?;
     let data = doc_send.save_incremental();
 
+    // Update receiving side in the meantime too
+    let (player_id, camera_id, numbers_id) = (
+        doc_receive.get(ObjId::Root, PLAYER)?.unwrap().1,
+        doc_receive.get(ObjId::Root, CAMERA)?.unwrap().1,
+        doc_receive.get(ObjId::Root, NUMBERS)?.unwrap().1,
+    );
+    update2(
+        &mut doc_receive,
+        &mut player_receive,
+        &mut camera_receive,
+        &mut numbers_receive,
+        &player_id,
+        &camera_id,
+        &numbers_id,
+    )?;
+    println!();
+
     // Receiving
     doc_receive.load_incremental(&data)?;
-    let received = receive(&doc_receive)?;
-    correct(&player_send, &camera_send, &numbers_send, &received);
+    receive(&doc_receive)?;
 
     Ok(())
 }
@@ -82,8 +105,8 @@ fn send(
     numbers: &[i32],
 ) -> Result<(ObjId, ObjId, ObjId)> {
     println!("Send:");
-    println!("{:?}", camera);
     println!("{:?}", player);
+    println!("{:?}", camera);
     println!("{:?}", numbers);
 
     let mut transaction = doc.transaction();
@@ -94,14 +117,14 @@ fn send(
     Ok((id_player, id_camera, id_numbers))
 }
 
-fn update(
+fn update1(
     doc: &mut Automerge,
     player: &mut Player,
     camera: &mut Camera,
     numbers: &mut [i32],
-    id_player: ObjId,
-    _id_camera: ObjId,
-    id_numbers: ObjId,
+    id_player: &ObjId,
+    _id_camera: &ObjId,
+    _id_numbers: &ObjId,
 ) -> Result<()> {
     // We update the players position
     player.position.x += 5;
@@ -116,14 +139,29 @@ fn update(
             |tx| {
                 player
                     .position
-                    .serialize(Serializer::new(tx, id_player, POSITION))
+                    .serialize(Serializer::new(tx, id_player.clone(), POSITION))
                     .map(|v| v.1)
             },
         )
         .map(|s| s.result)
         .map_err(|f| f.error)?;
 
-    // We update the camera position
+    println!("Update 1:");
+    println!("{:?}", player);
+    println!("{:?}", camera);
+    println!("{:?}", numbers);
+    Ok(())
+}
+
+fn update2(
+    doc: &mut Automerge,
+    player: &mut Player,
+    camera: &mut Camera,
+    numbers: &mut [i32],
+    _id_player: &ObjId,
+    _id_camera: &ObjId,
+    id_numbers: &ObjId,
+) -> Result<()> {
     camera.x -= 2;
     camera.y -= 2;
     camera.z -= 2;
@@ -132,11 +170,11 @@ fn update(
     doc.set_value(ObjId::Root, CAMERA, &camera)?;
 
     numbers[2] = 34;
-    doc.set_value(id_numbers, 2, 34)?;
+    doc.set_value(id_numbers.clone(), 2, 34)?;
 
-    println!("Update:");
-    println!("{:?}", camera);
+    println!("Update 2:");
     println!("{:?}", player);
+    println!("{:?}", camera);
     println!("{:?}", numbers);
     Ok(())
 }
@@ -147,22 +185,24 @@ fn receive(doc: &Automerge) -> Result<(Player, Camera, Vec<i32>)> {
     let numbers = Vec::<i32>::deserialize(Deserializer::new_get(&doc, ObjId::Root, NUMBERS)?)?;
 
     println!("Receive:");
-    println!("{:?}", camera);
     println!("{:?}", player);
+    println!("{:?}", camera);
     println!("{:?}", numbers);
 
     Ok((player, camera, numbers))
 }
 
 fn correct(
-    player: &Player,
-    camera: &Camera,
-    numbers: &Vec<i32>,
-    received: &(Player, Camera, Vec<i32>),
+    player_s: &Player,
+    camera_s: &Camera,
+    numbers_s: &Vec<i32>,
+    player_r: &Player,
+    camera_r: &Camera,
+    numbers_r: &Vec<i32>,
 ) {
     println!(
         "Equal: {}",
-        player == &received.0 && camera == &received.1 && numbers == &received.2
+        player_s == player_r && camera_s == camera_r && numbers_s == numbers_r
     );
     println!();
 }
