@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_automerge::{
     de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
@@ -27,7 +26,7 @@ const PLAYER: &'static str = "player";
 const CAMERA: &'static str = "camera";
 const NUMBERS: &'static str = "numbers";
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     // Initial dummy values
     let mut player_send = Player {
         position: Position { x: 1, y: 2, z: 3 },
@@ -47,12 +46,12 @@ fn main() -> anyhow::Result<()> {
     // Sending
     let mut doc_send = Automerge::new();
     let (player_id, camera_id, numbers_id) =
-        send(&mut doc_send, &player_send, &camera_send, &numbers_send)?;
+        send(&mut doc_send, &player_send, &camera_send, &numbers_send);
     let data = doc_send.save();
 
     // Receiving
-    let mut doc_receive = Automerge::load(&data)?;
-    let (mut player_receive, mut camera_receive, mut numbers_receive) = receive(&doc_receive)?;
+    let mut doc_receive = Automerge::load(&data).unwrap();
+    let (mut player_receive, mut camera_receive, mut numbers_receive) = receive(&doc_receive);
     correct(
         &player_send,
         &camera_send,
@@ -71,14 +70,14 @@ fn main() -> anyhow::Result<()> {
         &player_id,
         &camera_id,
         &numbers_id,
-    )?;
+    );
     let data = doc_send.save_incremental();
 
     // Update receiving side in the meantime too
     let (player_id, camera_id, numbers_id) = (
-        doc_receive.get(ObjId::Root, PLAYER)?.unwrap().1,
-        doc_receive.get(ObjId::Root, CAMERA)?.unwrap().1,
-        doc_receive.get(ObjId::Root, NUMBERS)?.unwrap().1,
+        doc_receive.get(ObjId::Root, PLAYER).unwrap().unwrap().1,
+        doc_receive.get(ObjId::Root, CAMERA).unwrap().unwrap().1,
+        doc_receive.get(ObjId::Root, NUMBERS).unwrap().unwrap().1,
     );
     update2(
         &mut doc_receive,
@@ -88,14 +87,12 @@ fn main() -> anyhow::Result<()> {
         &player_id,
         &camera_id,
         &numbers_id,
-    )?;
+    );
     println!();
 
     // Receiving
-    doc_receive.load_incremental(&data)?;
-    receive(&doc_receive)?;
-
-    Ok(())
+    doc_receive.load_incremental(&data).unwrap();
+    receive(&doc_receive);
 }
 
 fn send(
@@ -103,18 +100,24 @@ fn send(
     player: &Player,
     camera: &Camera,
     numbers: &[i32],
-) -> Result<(ObjId, ObjId, ObjId)> {
+) -> (ObjId, ObjId, ObjId) {
     println!("Send:");
     println!("{:?}", player);
     println!("{:?}", camera);
     println!("{:?}", numbers);
 
     let mut transaction = doc.transaction();
-    let (_, id_player) = player.serialize(Serializer::new_root(&mut transaction, PLAYER))?;
-    let (_, id_camera) = camera.serialize(Serializer::new_root(&mut transaction, CAMERA))?;
-    let (_, id_numbers) = numbers.serialize(Serializer::new_root(&mut transaction, NUMBERS))?;
+    let (_, id_player) = player
+        .serialize(Serializer::new_root(&mut transaction, PLAYER))
+        .unwrap();
+    let (_, id_camera) = camera
+        .serialize(Serializer::new_root(&mut transaction, CAMERA))
+        .unwrap();
+    let (_, id_numbers) = numbers
+        .serialize(Serializer::new_root(&mut transaction, NUMBERS))
+        .unwrap();
     transaction.commit();
-    Ok((id_player, id_camera, id_numbers))
+    (id_player, id_camera, id_numbers)
 }
 
 fn update1(
@@ -125,7 +128,7 @@ fn update1(
     id_player: &ObjId,
     _id_camera: &ObjId,
     _id_numbers: &ObjId,
-) -> Result<()> {
+) {
     // We update the players position
     player.position.x += 5;
     player.position.y += 5;
@@ -143,14 +146,13 @@ fn update1(
                     .map(|v| v.1)
             },
         )
-        .map(|s| s.result)
-        .map_err(|f| f.error)?;
+        .unwrap()
+        .result;
 
     println!("Update 1:");
     println!("{:?}", player);
     println!("{:?}", camera);
     println!("{:?}", numbers);
-    Ok(())
 }
 
 fn update2(
@@ -161,35 +163,38 @@ fn update2(
     _id_player: &ObjId,
     _id_camera: &ObjId,
     id_numbers: &ObjId,
-) -> Result<()> {
+) {
     camera.x -= 2;
     camera.y -= 2;
     camera.z -= 2;
 
     use serde_automerge::AutomergeSetExtension;
-    doc.set_value(ObjId::Root, CAMERA, &camera)?;
+    doc.set_value(ObjId::Root, CAMERA, &camera).unwrap();
 
     numbers[2] = 34;
-    doc.set_value(id_numbers.clone(), 2, 34)?;
+    doc.set_value(id_numbers.clone(), 2, 34).unwrap();
 
     println!("Update 2:");
     println!("{:?}", player);
     println!("{:?}", camera);
     println!("{:?}", numbers);
-    Ok(())
 }
 
-fn receive(doc: &Automerge) -> Result<(Player, Camera, Vec<i32>)> {
-    let player = Player::deserialize(Deserializer::new_get(&doc, ObjId::Root, PLAYER)?)?;
-    let camera = Camera::deserialize(Deserializer::new_get(&doc, ObjId::Root, CAMERA)?)?;
-    let numbers = Vec::<i32>::deserialize(Deserializer::new_get(&doc, ObjId::Root, NUMBERS)?)?;
+fn receive(doc: &Automerge) -> (Player, Camera, Vec<i32>) {
+    let player =
+        Player::deserialize(Deserializer::new_get(&doc, ObjId::Root, PLAYER).unwrap()).unwrap();
+    let camera =
+        Camera::deserialize(Deserializer::new_get(&doc, ObjId::Root, CAMERA).unwrap()).unwrap();
+    let numbers =
+        Vec::<i32>::deserialize(Deserializer::new_get(&doc, ObjId::Root, NUMBERS).unwrap())
+            .unwrap();
 
     println!("Receive:");
     println!("{:?}", player);
     println!("{:?}", camera);
     println!("{:?}", numbers);
 
-    Ok((player, camera, numbers))
+    (player, camera, numbers)
 }
 
 fn correct(
