@@ -137,7 +137,7 @@ fn update1(
     // We update _only_ the player with the previously obtained player_id
     // Since Serializer uses an &mut we can also use the transact functionallity
     let _pos_id = doc
-        .transact_with::<_, _, _, _, ()>(
+        .transact_with::<_, _, _, _>(
             |_| CommitOptions::default().with_message("Updating position"),
             |tx| {
                 player

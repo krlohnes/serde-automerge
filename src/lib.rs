@@ -31,7 +31,9 @@ pub trait AutomergeGetExtension {
     ) -> Result<Option<S>, AutomergeSerdeError>;
 }
 
-impl<'a> AutomergeSetExtension for transaction::Transaction<'a> {
+impl<'a, Obs: transaction::Observation> AutomergeSetExtension
+    for transaction::Transaction<'a, Obs>
+{
     fn set_value<S: serde::Serialize, P: Into<Prop>>(
         &mut self,
         obj: ObjId,
