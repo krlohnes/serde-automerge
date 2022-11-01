@@ -7,6 +7,6 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-automerge = { git = "https://github.com/Traverse-Research/automerge-rs", rev = "3a432e3" }
+automerge = { git = "https://github.com/automerge/automerge-rs", rev = "6bbed76" }
 serde = "1"
 thiserror = "1.0.32"
