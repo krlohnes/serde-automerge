@@ -11,7 +11,7 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 [[package]]
 name = "automerge"
 version = "0.1.0"
-source = "git+https://github.com/automerge/automerge-rs/?rev=bba4fe2#bba4fe2c36a165f0513d0c2751b35a5cb1acbda5"
+source = "git+https://github.com/tosti007/automerge-rs/?rev=3a432e3#3a432e3d7031ad1419234ace148049d88e7358b2"
 dependencies = [
  "flate2",
  "fxhash",
@@ -339,9 +339,9 @@ checksum = "6ceab39d59e4c9499d4e5a8ee0e2735b891bb7308ac83dfb4e80cad195c9f6f3"
 
 [[package]]
 name = "uuid"
-version = "0.8.2"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+checksum = "feb41e78f93363bb2df8b0e86a2ca30eed7806ea16ea0c790d757cf93f79be83"
 dependencies = [
  "getrandom",
  "serde",
