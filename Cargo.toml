@@ -10,6 +10,6 @@ description = "(De)serialize `serde` objects from or into `automerge` transactio
 include = ["src", "LICENSE", "CONTRIBUTING.md"]
 
 [dependencies]
-automerge = "0.2"
+automerge = "0.5"
 serde = "1"
 thiserror = "1.0.32"

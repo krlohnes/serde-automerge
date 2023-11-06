@@ -1,5 +1,8 @@
 use super::{Deserializer as ValueDeserializer, Error};
-use automerge::{Automerge, MapRange, ObjId, Value};
+use automerge::{
+    iter::{MapRange, MapRangeItem},
+    Automerge, ObjId, ReadDoc as _, Value,
+};
 use serde::de::{self, IntoDeserializer};
 use std::ops::RangeFull;
 
@@ -35,7 +38,13 @@ impl<'de, 'a> de::MapAccess<'de> for MapDeserializer<'a> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        if let Some((key, value, id)) = self.values.next() {
+        if let Some(MapRangeItem {
+            key,
+            value,
+            id,
+            conflict: _,
+        }) = self.values.next()
+        {
             self.current = Some((value, id));
             seed.deserialize(key.into_deserializer()).map(Some)
         } else {

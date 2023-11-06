@@ -1,3 +1,4 @@
+use automerge::ReadDoc;
 use serde::{Deserialize, Serialize};
 use serde_automerge::{
     de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
@@ -48,7 +49,10 @@ fn test_updates_and_merging() {
     let mut doc_send = Automerge::new();
     let (player_id, camera_id, numbers_id) =
         send(&mut doc_send, &player_send, &camera_send, &numbers_send);
+    // XXX: We can also retrieve the hash from .commit() inside send()!
+    let heads_on_send = doc_send.get_heads();
     let data = doc_send.save();
+    dbg!(data.len());
 
     // Receiving
     let mut doc_receive = Automerge::load(&data).unwrap();
@@ -70,7 +74,12 @@ fn test_updates_and_merging() {
 
     assert_ne!(player_send, player_receive);
 
-    let data = doc_send.save_incremental();
+    // XXX: Only AutoCommit has save_incremental().  For a regular Automerge document one **must
+    // manually** keep track of the last hash that we communicated to the server, in case we want to
+    // send just incremental commits to it.
+    // let data = doc_send.save_incremental();
+    let data = doc_send.save_after(&heads_on_send);
+    dbg!(data.len());
 
     // Update receiving side in the meantime too
     let (player_id, camera_id, numbers_id) = (
@@ -122,7 +131,7 @@ fn send(
     let (_, id_numbers) = numbers
         .serialize(Serializer::new_root(&mut transaction, NUMBERS))
         .unwrap();
-    transaction.commit();
+    let (_change_hash, _patch_log) = transaction.commit();
     (id_player, id_camera, id_numbers)
 }
 
