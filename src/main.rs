@@ -20,11 +20,11 @@ struct Player {
     direction: Direction,
 }
 // This must be equal to the member variable
-const POSITION: &'static str = "position";
+const POSITION: &str = "position";
 
-const PLAYER: &'static str = "player";
-const CAMERA: &'static str = "camera";
-const NUMBERS: &'static str = "numbers";
+const PLAYER: &str = "player";
+const CAMERA: &str = "camera";
+const NUMBERS: &str = "numbers";
 
 fn main() {
     // Initial dummy values
@@ -182,12 +182,11 @@ fn update2(
 
 fn receive(doc: &Automerge) -> (Player, Camera, Vec<i32>) {
     let player =
-        Player::deserialize(Deserializer::new_get(&doc, ObjId::Root, PLAYER).unwrap()).unwrap();
+        Player::deserialize(Deserializer::new_get(doc, ObjId::Root, PLAYER).unwrap()).unwrap();
     let camera =
-        Camera::deserialize(Deserializer::new_get(&doc, ObjId::Root, CAMERA).unwrap()).unwrap();
+        Camera::deserialize(Deserializer::new_get(doc, ObjId::Root, CAMERA).unwrap()).unwrap();
     let numbers =
-        Vec::<i32>::deserialize(Deserializer::new_get(&doc, ObjId::Root, NUMBERS).unwrap())
-            .unwrap();
+        Vec::<i32>::deserialize(Deserializer::new_get(doc, ObjId::Root, NUMBERS).unwrap()).unwrap();
 
     println!("Receive:");
     println!("{:?}", player);

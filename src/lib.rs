@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub mod de;
 pub mod ser;
 
@@ -82,7 +84,7 @@ impl AutomergeGetExtension for Automerge {
         prop: P,
     ) -> Result<Option<S>, AutomergeSerdeError> {
         self.get(obj, prop)?
-            .map(|(v, id)| Deserializer::new_found(&self, v, id))
+            .map(|(v, id)| Deserializer::new_found(self, v, id))
             .map(|d| S::deserialize(d))
             .transpose()
             .map_err(Into::into)
