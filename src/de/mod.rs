@@ -1,4 +1,6 @@
-use automerge::{Automerge, AutomergeError, ObjId, ObjType, Prop, ScalarValue, Value};
+use automerge::{
+    Automerge, AutomergeError, ObjId, ObjType, Prop, ReadDoc as _, ScalarValue, Value,
+};
 use serde::{de, forward_to_deserialize_any};
 
 mod error;

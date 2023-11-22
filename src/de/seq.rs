@@ -1,5 +1,8 @@
 use super::{Deserializer as ValueDeserializer, Error};
-use automerge::{Automerge, ListRange, ObjId};
+use automerge::{
+    iter::{ListRange, ListRangeItem},
+    Automerge, ObjId, ReadDoc as _,
+};
 use serde::de::{self};
 use std::ops::RangeFull;
 
@@ -24,7 +27,7 @@ impl<'de, 'a> de::SeqAccess<'de> for SeqDeserializer<'a> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        if let Some((_index, value, id)) = self.values.next() {
+        if let Some(ListRangeItem { value, id, .. }) = self.values.next() {
             seed.deserialize(ValueDeserializer::new_found(self.doc, value, id))
                 .map(Some)
         } else {
