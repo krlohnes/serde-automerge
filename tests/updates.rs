@@ -1,4 +1,4 @@
-use automerge::ReadDoc;
+use automerge::{transaction::Transactable, AutoCommit, ReadDoc};
 use serde::{Deserialize, Serialize};
 use serde_automerge::{
     de::Deserializer, ser::Serializer, transaction::CommitOptions, Automerge, ObjId,
@@ -46,13 +46,10 @@ fn test_updates_and_merging() {
     let mut numbers_send = vec![31, 32, 33];
 
     // Sending
-    let mut doc_send = Automerge::new();
+    let mut doc_send = AutoCommit::new();
     let (player_id, camera_id, numbers_id) =
         send(&mut doc_send, &player_send, &camera_send, &numbers_send);
-    // XXX: We can also retrieve the hash from .commit() inside send()!
-    let heads_on_send = doc_send.get_heads();
     let data = doc_send.save();
-    dbg!(data.len());
 
     // Receiving
     let mut doc_receive = Automerge::load(&data).unwrap();
@@ -74,12 +71,7 @@ fn test_updates_and_merging() {
 
     assert_ne!(player_send, player_receive);
 
-    // XXX: Only AutoCommit has save_incremental().  For a regular Automerge document one **must
-    // manually** keep track of the last hash that we communicated to the server, in case we want to
-    // send just incremental commits to it.
-    // let data = doc_send.save_incremental();
-    let data = doc_send.save_after(&heads_on_send);
-    dbg!(data.len());
+    let data = doc_send.save_incremental();
 
     // Update receiving side in the meantime too
     let (player_id, camera_id, numbers_id) = (
@@ -111,7 +103,7 @@ fn test_updates_and_merging() {
 }
 
 fn send(
-    doc: &mut Automerge,
+    transaction: &mut impl Transactable,
     player: &Player,
     camera: &Camera,
     numbers: &[i32],
@@ -121,22 +113,20 @@ fn send(
     println!("{:?}", camera);
     println!("{:?}", numbers);
 
-    let mut transaction = doc.transaction();
     let (_, id_player) = player
-        .serialize(Serializer::new_root(&mut transaction, PLAYER))
+        .serialize(Serializer::new_root(transaction, PLAYER))
         .unwrap();
     let (_, id_camera) = camera
-        .serialize(Serializer::new_root(&mut transaction, CAMERA))
+        .serialize(Serializer::new_root(transaction, CAMERA))
         .unwrap();
     let (_, id_numbers) = numbers
-        .serialize(Serializer::new_root(&mut transaction, NUMBERS))
+        .serialize(Serializer::new_root(transaction, NUMBERS))
         .unwrap();
-    let (_change_hash, _patch_log) = transaction.commit();
     (id_player, id_camera, id_numbers)
 }
 
 fn update1(
-    doc: &mut Automerge,
+    doc: &mut AutoCommit,
     player: &mut Player,
     camera: &mut Camera,
     numbers: &mut [i32],
@@ -150,19 +140,13 @@ fn update1(
     player.position.z += 5;
 
     // We update _only_ the player with the previously obtained player_id
-    // Since Serializer uses an &mut we can also use the transact functionallity
-    let _pos_id = doc
-        .transact_with::<_, _, _, _>(
-            |_| CommitOptions::default().with_message("Updating position"),
-            |tx| {
-                player
-                    .position
-                    .serialize(Serializer::new(tx, id_player.clone(), POSITION))
-                    .map(|v| v.1)
-            },
-        )
-        .unwrap()
-        .result;
+    // Since Serializer uses a &mut we can also use the transact functionallity
+    let (doc, _ex_id) = player
+        .position
+        .serialize(Serializer::new(doc, id_player.clone(), POSITION))
+        .expect("Serialize failed");
+
+    doc.commit_with(CommitOptions::default().with_message("Updating position"));
 
     println!("Update 1:");
     println!("{:?}", player);
