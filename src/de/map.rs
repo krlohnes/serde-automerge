@@ -1,37 +1,37 @@
 use super::{Deserializer as ValueDeserializer, Error};
 use automerge::{
     iter::{MapRange, MapRangeItem},
-    Automerge, ObjId, ReadDoc as _, Value,
+    ObjId, ReadDoc, Value,
 };
 use serde::de::{self, IntoDeserializer};
 use std::ops::RangeFull;
 
-pub struct MapDeserializer<'a> {
-    doc: &'a Automerge,
+pub struct MapDeserializer<'a, Rx: ReadDoc> {
+    doc: &'a Rx,
     values: MapRange<'a, RangeFull>,
     current: Option<(Value<'a>, ObjId)>,
 }
 
-impl<'a> MapDeserializer<'a> {
-    pub fn new(doc: &'a Automerge, id: ObjId) -> Self {
+impl<'a, Rx: ReadDoc> MapDeserializer<'a, Rx> {
+    pub fn new(doc: &'a Rx, id: ObjId) -> Self {
         Self {
             doc,
             values: doc.map_range(id, ..),
             current: None,
         }
     }
-    pub fn new_root(doc: &'a Automerge) -> Self {
+    pub fn new_root(doc: &'a Rx) -> Self {
         Self::new(doc, ObjId::Root)
     }
 }
 
-impl<'a> From<&'a Automerge> for MapDeserializer<'a> {
-    fn from(doc: &'a Automerge) -> Self {
+impl<'a, Rx: ReadDoc> From<&'a Rx> for MapDeserializer<'a, Rx> {
+    fn from(doc: &'a Rx) -> Self {
         Self::new_root(doc)
     }
 }
 
-impl<'de, 'a> de::MapAccess<'de> for MapDeserializer<'a> {
+impl<'de, 'a, Rx: ReadDoc> de::MapAccess<'de> for MapDeserializer<'a, Rx> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
