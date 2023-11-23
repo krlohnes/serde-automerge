@@ -1,6 +1,4 @@
-use automerge::{
-    Automerge, AutomergeError, ObjId, ObjType, Prop, ReadDoc as _, ScalarValue, Value,
-};
+use automerge::{AutomergeError, ObjId, ObjType, Prop, ReadDoc, ScalarValue, Value};
 use serde::{de, forward_to_deserialize_any};
 
 mod error;
@@ -11,23 +9,23 @@ pub use error::Error;
 pub use map::MapDeserializer;
 pub use seq::SeqDeserializer;
 
-pub struct Deserializer<'a> {
-    pub doc: &'a Automerge,
+pub struct Deserializer<'a, Rx: ReadDoc> {
+    pub doc: &'a Rx,
     pub value: Option<(Value<'a>, ObjId)>,
 }
 
-impl<'a> Deserializer<'a> {
-    pub fn new(doc: &'a Automerge, value: Option<(Value<'a>, ObjId)>) -> Self {
+impl<'a, Rx: ReadDoc> Deserializer<'a, Rx> {
+    pub fn new(doc: &'a Rx, value: Option<(Value<'a>, ObjId)>) -> Self {
         Self { doc, value }
     }
-    pub fn new_found(doc: &'a Automerge, value: Value<'a>, id: ObjId) -> Self {
+    pub fn new_found(doc: &'a Rx, value: Value<'a>, id: ObjId) -> Self {
         Self::new(doc, Some((value, id)))
     }
-    pub fn new_root(doc: &'a Automerge) -> Self {
+    pub fn new_root(doc: &'a Rx) -> Self {
         Self::new_found(doc, ObjType::Map.into(), ObjId::Root)
     }
     pub fn new_get<O: AsRef<ObjId>, P: Into<Prop>>(
-        doc: &'a Automerge,
+        doc: &'a Rx,
         key: O,
         prop: P,
     ) -> Result<Self, AutomergeError> {
@@ -35,13 +33,13 @@ impl<'a> Deserializer<'a> {
     }
 }
 
-impl<'a> From<&'a Automerge> for Deserializer<'a> {
-    fn from(doc: &'a Automerge) -> Self {
+impl<'a, Rx: ReadDoc> From<&'a Rx> for Deserializer<'a, Rx> {
+    fn from(doc: &'a Rx) -> Self {
         Self::new_root(doc)
     }
 }
 
-impl<'de> de::Deserializer<'de> for Deserializer<'_> {
+impl<'de, Rx: ReadDoc> de::Deserializer<'de> for Deserializer<'_, Rx> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
